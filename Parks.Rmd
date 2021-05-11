@@ -201,7 +201,7 @@ ggplot(data = merged_data, mapping = aes(x = zipcode, y = parks_per100000))+
   theme(plot.title = element_text(hjust = 0.5))
 
 ```
-Figure 1 displays the park distribution in Austin measured in acreage per 100000. Zip code 78701 has the highest acreage per 100000 of 159.12 acres. Alternatively, zip code 78742 the lowest acreage per 100000 of 0 acres. 
+Figure 1 displays the distribution outdoor spaces in Austin measured in acreage per 100000. Zip code 78701 has the highest acreage per 100000 of 159.12 acres. Alternatively, zip code 78742 the lowest acreage per 100000 of 0 acres. 
 
 ```{r, echo=FALSE}
 ##################HIERARCHICAL CLUSTERING OF MERGED DATA########################

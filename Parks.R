@@ -99,7 +99,7 @@ austin_parks = rename(austin_parks, Name = LOCATION_NAME)
 austin_parks = austin_parks %>%
   filter(zipcode >= 78701)
 
-#removes non-Austin zipcodes
+#removes non-Austin zip codes
 travis_parks = travis_parks %>%
   filter(zipcode >= 78701)
 
@@ -156,11 +156,6 @@ merged_data = merge(zip_totals, austin_medianincome)
 merged_data = merged_data %>%
   mutate(parks_per100000 = total/Population *100000)
 
-##############MAY NOT NEEED
-#finds lon and lat for zipcodes
-merged_data = merged_data %>%
-  mutate(geocode(zipcode))
-############
 
 #barplot park totals
 ggplot(data = zip_totals, mapping = aes(x = zipcode, y = total))+ 
@@ -172,7 +167,7 @@ ggplot(data = zip_totals, mapping = aes(x = zipcode, y = total))+
 #acerage per 100000
 ggplot(data = merged_data, mapping = aes(x = zipcode, y = parks_per100000))+ 
   geom_col(mapping = aes(x = reorder(zipcode, parks_per100000), y = parks_per100000), fill = 'darkgreen') + 
-  coord_flip() + scale_y_continuous(name = "Acreage Per 100000 People") +
+  coord_flip() + scale_y_continuous(name = "Acreage Per 100000") +
   scale_x_discrete(name = "Zipcode") + ggtitle("Park Distribution in Austin") +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -181,7 +176,7 @@ ggplot(data = merged_data, mapping = aes(x = zipcode, y = parks_per100000))+
 
 
 
-#merges data sets 
+#merges data sets for parks and median income
 parks_and_income = merge(all_austin_parks, austin_medianincome)
 
 #removes address column
@@ -213,7 +208,7 @@ map1
 sum(all_austin_parks$acres)
 mean(all_austin_parks$acres)
 
-
+tinytex::reinstall_tinytex()
 
 
 
@@ -250,26 +245,50 @@ table(clusters)
 parks_and_income = cbind(parks_and_income, clusters)
 
 
-
-map3 = p + geom_point(aes(x = lon, y = lat, color = factor(clusters)), 
-                         data = parks_and_income, size = 3)+ xlab("Longitude") + ylab("Latitude") + ggtitle("Figure 1") +
+#map of park clusters 
+map2 = p + geom_point(aes(x = lon, y = lat, color = factor(clusters)), 
+                         data = parks_and_income, size = 3)+ xlab("Longitude") + ylab("Latitude") + ggtitle("Figure 2") +
   theme(plot.title = element_text(hjust = 0.5)) + labs(color = "Cluster")
 
-map3
+map2
 
 
+
+#finds cluster in each park
+clust_pop = summarize(group_by(parks_and_income, zipcode), total_parks = n(),
+                      Population = sum(Population), clusters = sum(clusters)) %>%
+  mutate(Population = Population/total_parks) %>%
+  mutate(clusters = clusters/total_parks, clusters = round(clusters, digits = 0))
+
+#groups clusters and sums population
+clust_pop = summarize(group_by(clust_pop, clusters), Population = sum(Population))
+
+#removes cluster column
+clust_pop = select(clust_pop, -1)
+
+
+
+#groups clusters and sums parks and acres
 clust_totals = summarize(group_by(parks_and_income, clusters), total_parks = n(), Total.Acres = sum(acres)) %>%
   mutate(Share.of.Parks = total_parks/sum(total_parks)) %>%
-  mutate(Average.Acres = Total.Acres/total_parks)
+  mutate(Average.Acres = Total.Acres/total_parks) 
 
+#combines clust_totals and population totals found in clust_pop
+clust_totals = cbind(clust_totals, clust_pop)
+
+#calculates acres per 100000
+clust_totals = clust_totals%>%
+  mutate(Acres.Per.100000 = Total.Acres/Population*100000)
+
+#renames columns
 clust_totals = rename(clust_totals, Cluster = clusters)
 clust_totals = rename(clust_totals, No.of.Parks = total_parks)
 
 #reorders columns
-column_order <- c("Cluster", "No.of.Parks", "Share.of.Parks", "Total.Acres", "Average.Acres")
+column_order <- c("Cluster", "Population", "No.of.Parks", "Share.of.Parks", "Total.Acres", "Average.Acres", "Acres.Per.100000")
 clust_totals = clust_totals[,column_order]
 
-
+#creates table
 kable(clust_totals, caption = "Results", digits = 2)
 
 ################################################################################
@@ -282,9 +301,13 @@ kable(clust_totals, caption = "Results", digits = 2)
 
 
 
+install.packages("formattable")
 
 
+library(formattable)
 
+
+formattable(clust_totals)
 
 
 
