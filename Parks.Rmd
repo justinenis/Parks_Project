@@ -324,7 +324,7 @@ clust_totals = rename(clust_totals, No.of.Parks = total_parks)
 column_order <- c("Cluster", "Population", "No.of.Parks", "Share.of.Parks", "Total.Acres", "Average.Acres", "Acres.Per.100000")
 clust_totals = clust_totals[,column_order]
 
-formattable(clust_totals)
+knitr::kable(clust_totals, "pipe", caption = "Results", digits = 2, col.names = c("Cluster", "Population", "Number of Parks", "Share of Parks", "Total Acres", "Average Acres", "Acres Per 100000"))
 ```
 
 
