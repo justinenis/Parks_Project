@@ -7,154 +7,172 @@ library(tidycensus)
 library(foreach)
 library(stringr)
 library(dplyr)
-library(data.table)
+library(NbClust)
+library(cluster)
+library(kableExtra)
 
 #Google API key
 ggmap::register_google(key = "AIzaSyDjpa_BSzUs11JA1rBa2YFZs3YMrfPiu-A")
 
 #imports data for Austin parks and median income per zipcode
-austin_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/City_of_Austin_Parks_data.csv')
-travis_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/Travis_Parks.csv')
-austin_medianincome = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks/Median_incomes.csv')
+austin_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/City_of_Austin_Parks_data.csv')
+travis_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/Travis_Parks.csv')
+more_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/more_parks.csv')
+austin_medianincome = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/Austin_median_income.csv')
+
 
 
 #removes unnecessary columns
 austin_parks = select(austin_parks, -(1:2), -(4:29), -(31:45), -(47:49), -(51:55))
 travis_parks = select(travis_parks, -1, -3, -(6:20))
+more_parks = select(more_parks, -(4:5))
+austin_medianincome = select(austin_medianincome,-(4:5))
 
 
-#removes first column
-austin_medianincome = austin_medianincome[,-1]
-#removes unnecessary columns
-austin_medianincome = select(austin_medianincome,-1, -(2:3), -6)
-
-
-#removes zipcodes not managed by the city of Austin or Travis county
-austin_medianincome = subset(austin_medianincome, austin_medianincome$Zip.Code != '78728')
-austin_medianincome = subset(austin_medianincome, austin_medianincome$Zip.Code != '78738')
-
-
+##########################CLEANS INCOME DATA########################
 #renames column
-austin_medianincome = rename(austin_medianincome, zipcode = Zip.Code)
-austin_medianincome = rename(austin_medianincome, avg.income = Avg..Income.H.hold)
+austin_medianincome = rename(austin_medianincome, zipcode = ZIP.Code)
+austin_medianincome = rename(austin_medianincome, Population = Population..2018.Est..1)
 
 
 #converts variables to numeric
-austin_medianincome$avg.income <- as.numeric(gsub('[$,]', '', austin_medianincome$avg.income))
+austin_medianincome$Median.Household.Income <- as.numeric(gsub('[$,]', '', austin_medianincome$Median.Household.Income))
 austin_medianincome$Population <- as.numeric(gsub(',', '', austin_medianincome$Population))
+austin_medianincome$No..Of.Households..2018.Est.<- as.numeric(gsub(',', '', austin_medianincome$No..Of.Households..2018.Est.))
+austin_medianincome$Per.Capita.Income..2018.Est. <- as.numeric(gsub('[$,]', '', austin_medianincome$Per.Capita.Income..2018.Est.))
+austin_medianincome$Median.Value.Of.Owner.Occupied.Homes..2018.Est. <- as.numeric(gsub('[$,]', '', austin_medianincome$Median.Value.Of.Owner.Occupied.Homes..2018.Est.))
+austin_medianincome$No..Of.Households.With.Income..200K...2108.Est. <- as.numeric(gsub(',', '', austin_medianincome$No..Of.Households.With.Income..200K...2108.Est.))
+austin_medianincome$No..With.Master.s.Degrees <- as.numeric(gsub(',', '', austin_medianincome$No..With.Master.s.Degrees))
+austin_medianincome$No..With.Bachelor.s.Degree <- as.numeric(gsub(',', '', austin_medianincome$No..With.Bachelor.s.Degree))
 
 
+#filters zip codes only in austin
+austin_medianincome = austin_medianincome %>%
+  filter(Zip.Code.City. == 'Austin')
+
+#removes column no longer necessary
+austin_medianincome = select(austin_medianincome,-3)
+
+sum(austin_medianincome$Population)
+
+
+
+
+########CLEANS TRAVIS COUNTY PARK DATA
 #finds longitude and latitude
 travis_parks = travis_parks %>%
   mutate(geocode(FIRST_Address)) 
-
 
 #finds associated addresses of longitude and latitude
 address <- do.call(rbind,
                    lapply(1:nrow(travis_parks),
                           function(i)revgeocode(as.numeric(travis_parks[i,4:5]))))
 
-
 #combines address vector with austin_parks
 travis_parks <- cbind(travis_parks,address)
-
 
 #extracts zipcode from address vector
 travis_parks$zipcode <- substr(str_extract(travis_parks$address," [0-9]{5}, .+"),2,6)
 
-
 #removes newly created address column 
 travis_parks = travis_parks[,-6]
-
 
 #renames columns in travis parks
 travis_parks = rename(travis_parks, address = FIRST_Address)
 travis_parks = rename(travis_parks, acres = SUM_Park_Acres)
 
 
+
+##########################CLEANS AUSTIN PARKS DATA############################
+
 #finds longitude and latitude associated with each park
 austin_parks = austin_parks %>%
   mutate(geocode(ADDRESS)) 
 
-
-#renames columns in austin parks
+#renames columns in Austin parks
 austin_parks = rename(austin_parks, address = ADDRESS)
 austin_parks = rename(austin_parks, zipcode = ZIPCODE)
 austin_parks = rename(austin_parks, acres = ASSET_SIZE)
 austin_parks = rename(austin_parks, Name = LOCATION_NAME)
 
-#removes non-Austin zipcodes
+#removes non-Austin zip codes
 austin_parks = austin_parks %>%
-  filter(zipcode >= 78700)
+  filter(zipcode >= 78701)
 
 #removes non-Austin zipcodes
 travis_parks = travis_parks %>%
-  filter(zipcode >= 78700)
+  filter(zipcode >= 78701)
 
-#combines both data sets of parks in austin
+#combines both data sets of austin and travis county parks in austin
 all_austin_parks = rbind(austin_parks, travis_parks)
 
+
+##########################CLEANS MORE_PARKS DATA################################
+
+more_parks = more_parks %>%
+  mutate(geocode(Address))
+
+#finds associated addresses of longitude and latitude
+address <- do.call(rbind,
+                   lapply(1:nrow(more_parks),
+                          function(i)revgeocode(as.numeric(more_parks[i,4:5]))))
+
+#combines address vector with austin_parks
+more_parks <- cbind(more_parks,address)
+
+#extracts zipcode from address vector
+more_parks$zipcode <- substr(str_extract(more_parks$address," [0-9]{5}, .+"),2,6)
+
+#removes newly created address column 
+more_parks = more_parks[,-2]
+
+#renames columns in parks
+more_parks = rename(more_parks, acres = Acres.of.Land)
+more_parks = rename(more_parks, Name = Park.Name)
+
+#combines all park data
+all_austin_parks = rbind(all_austin_parks, more_parks)
+
+#reorders columns
+column_order <- c("Name", "address", "zipcode", "acres", "lon", "lat")
+all_austin_parks = all_austin_parks[,column_order]
+
+
+
+
 #finds park percentages
-zip_totals = summarize(group_by(all_austin_parks, zipcode), total = n()) %>%
-  mutate(percentage = total/sum(total)) 
+zip_totals = summarize(group_by(all_austin_parks, zipcode), total = n(), acres = sum(acres)) %>%
+  mutate(share_of_parks = total/sum(total)) %>%
+  mutate(avg_acre_in_zip = acres/total)
 
-sum(zip_totals$total)
-
-
-#adds row for zipcode 78742, zero parks
+#adds row for zipcode 78742, which had zero parks
 zip_totals = zip_totals %>% 
-  add_row(zipcode = '78742', total = 0, percentage = 0)
+  add_row(zipcode = '78742', total = 0, acres = 0,share_of_parks = 0, avg_acre_in_zip = 0)
 
-#finds ave acre percentages
-avg_acre = summarize(group_by(all_austin_parks, zipcode), total = sum(acres)) %>%
-  mutate(percentage = total/sum(all_austin_parks$acres)) 
+#merges data sets 
+merged_data = merge(zip_totals, austin_medianincome)
 
-#adds row for zipcode 78742, zero parks
-avg_acre = avg_acre %>% 
-  add_row(zipcode = '78742', total = 0, percentage = 0)
+#parks per capita per 100000
+merged_data = merged_data %>%
+  mutate(parks_per100000 = total/Population *100000)
 
-#barplot of avg acre
-ggplot(data = avg_acre, mapping = aes(x = zipcode, y = total))+ 
-  geom_col( mapping = aes(x = reorder(zipcode, total), y = total), fill = 'lightblue') + 
-  coord_flip() + scale_y_continuous(name = "Percentage of Parks") +
-  scale_x_discrete(name = "Zipcode") + ggtitle("Park Distribution in Austin") +
-  theme(plot.title = element_text(hjust = 0.5))
+##############MAY NOT NEEED
+#finds lon and lat for zipcodes
+merged_data = merged_data %>%
+  mutate(geocode(zipcode))
+############
 
-#barplot of avg income
-ggplot(data = austin_medianincome, mapping = aes(x = zipcode, y = avg.income))+ 
-  geom_col( mapping = aes(x = reorder(zipcode, avg.income), y = avg.income), fill = 'red') + 
-  coord_flip() + scale_y_continuous(name = "Percentage of Parks") +
-  scale_x_discrete(name = "Zipcode") + ggtitle("Park Distribution in Austin") +
-  theme(plot.title = element_text(hjust = 0.5))
-
-
-
-data = avg_acre%>%
-  mutate(ifelse(match(austin_medianincome$zipcode, zip_totals$zipcode), zip_totals$total), 0)
-
-cbind(austin_medianincome, data)
-
-for (i in 1:nrow(austin_medianincome)) 
-
-mean(austin_medianincome$avg.income)
-sum(austin_medianincome$Population)
-
-
-#barplot totals
+#barplot park totals
 ggplot(data = zip_totals, mapping = aes(x = zipcode, y = total))+ 
   geom_col(mapping = aes(x = reorder(zipcode, total), y = total), fill = 'darkgreen') + 
   coord_flip() + scale_y_continuous(name = "Total Parks") +
   scale_x_discrete(name = "Zipcode") + ggtitle("Park Distribution in Austin") +
   theme(plot.title = element_text(hjust = 0.5))
-            
 
-#barplot percentages
-ggplot(data = zip_totals, mapping = aes(x = zipcode, y = percentage)) + 
-  geom_bar(stat = "identity")
-
-ggplot(data = zip_totals, mapping = aes(x = zipcode, y = percentage, fill = zipcode))+ 
-  geom_col( mapping = aes(x = reorder(zipcode, percentage), y = percentage)) + 
-  coord_flip() + scale_y_continuous(name = "Percentage of Parks") +
+#acerage per 100000
+ggplot(data = merged_data, mapping = aes(x = zipcode, y = parks_per100000))+ 
+  geom_col(mapping = aes(x = reorder(zipcode, parks_per100000), y = parks_per100000), fill = 'darkgreen') + 
+  coord_flip() + scale_y_continuous(name = "Acreage Per 100000 People") +
   scale_x_discrete(name = "Zipcode") + ggtitle("Park Distribution in Austin") +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -163,40 +181,31 @@ ggplot(data = zip_totals, mapping = aes(x = zipcode, y = percentage, fill = zipc
 
 
 
-austin_medianincome = austin_medianincome[,-(2:4)]
-austin_medianincome = austin_medianincome[,-3]
+#merges data sets 
+parks_and_income = merge(all_austin_parks, austin_medianincome)
 
-new_austin_medianincome = cbind(austin_medianincome, zip_totals)
+#removes address column
+parks_and_income = select(parks_and_income, -3)
+
+parks_and_income$education <-rowSums(cbind(parks_and_income$No..With.Master.s.Degrees, parks_and_income$No..With.Bachelor.s.Degree))
+
+parks_and_income= parks_and_income %>%
+  mutate(percent_of_education = education/Population)
+
+parks_and_income= parks_and_income %>%
+  mutate(educ_income = percent_of_education*Median.Household.Income)
 
 
-match(austin_medianincome, zip = austin_medianincome$Zip.Code==zip_totals$zipcode)
-
-
-
-
-#creates an interactive google map
-austin_parks %>%
-  leaflet() %>%
-  addTiles() %>%
-  addMarkers()
-
-###############MAY NOT NEED#########################
-#creates map of park points
+#map of interaction variable
 p <- ggmap(get_googlemap(center = c(lon =  -97.733330, lat = 30.266666),
                          zoom = 11, scale = 2,
                          maptype ='terrain',
                          color = 'color'))
-figure1 = p + geom_point(aes(x = lon, y = lat), 
-                         data = all_austin_parks, size = 0.5)+ xlab("Longitude") + ylab("Latitude") + ggtitle("Figure 1") +
+map1 = p + geom_point(aes(x = lon, y = lat, color = educ_income),
+                      data = parks_and_income, size= 3)+ xlab("Longitude") + ylab("Latitude") + ggtitle("Figure 1") +
   theme(plot.title = element_text(hjust = 0.5))
-figure1
 
-
-austin_parks = austin_parks %>%
-  mutate(zipcode = search_radius(lat = lat, lng = lon, radius = 1))
-
-#####################################################
-
+map1
 
 
 
@@ -205,65 +214,85 @@ sum(all_austin_parks$acres)
 mean(all_austin_parks$acres)
 
 
-ggplot(all_austin_parks, aes(x = acres)) + 
-  geom_histogram(color="darkblue", fill="lightblue", binwidth = 5) +
-  geom_vline(aes(xintercept=mean(acres)),
-             color="red", linetype="dashed", size=1) + 
-  ggtitle("Austin Parks Mean") + theme(plot.title = element_text(hjust = 0.5))
 
 
-aaa = for (i in austin_medianincome$Population){
-  for(i in zip_totals$zipcode){
-    vector(population)
-  }
+
+
+
+
+
+##################HIERARCHICAL CLUSTERING OF MERGED DATA########################
+X_parks = parks_and_income[,3:16]
+X_parks = scale(X_parks, center=TRUE, scale=TRUE)
+distances = dist(X_parks, method = "euclidean")
+
+#hierarchical clustering SINGLE = NO, COMPLETE = MAYBE, AVERAGE = MAYBE, WARD.D2 = YES
+cluster_parks = hclust(distances, method = 'ward.D2')
+plot(cluster_parks, labels = FALSE, hang = -1)
+
+
+
+#creates k grid
+k_grid = seq(2, 30, by=1)
+SSE_grid = foreach(k = k_grid, .combine = 'c') %do% {
+  cluster_k = kmeans(X_parks, k, nstart = 50)
+  cluster_k$tot.withinss
 }
 
-Aaustin_medianincome = data.frame(zipcode = as.character(austin_medianincome$zipcode))
+#SSE plot
+plot(SSE_grid)
 
-aaa = bind_rows(Aaustin_medianincome, zip_totals)
+#cut tree for clusters
+clusters <- cutree(cluster_parks, k =2)
+table(clusters)
 
-
-
-aaa = ddply(austin_medianincome, summarise, .variable = c("population"), decreasing = TRUE)
-
-
-  
-lm(Population ~ avg.income, data = austin_medianincome)
-
-
-#imports data for NYC parks
-nyc_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks/OpenData_ParksProperties.csv')
-
-
-nyc_parks = nyc_parks %>%
-  drop_na()
-
-
-#sums acres in NYC parks
-sum(nyc_parks$ACRES)
-sum(austin_medianincome$Population)
-
-x <- nyc_parks$NAME311
-duplicated(x)
-x1 = x[!duplicated(x)]
+#takes cluster vector and applies to parks_and_income
+parks_and_income = cbind(parks_and_income, clusters)
 
 
 
+map3 = p + geom_point(aes(x = lon, y = lat, color = factor(clusters)), 
+                         data = parks_and_income, size = 3)+ xlab("Longitude") + ylab("Latitude") + ggtitle("Figure 1") +
+  theme(plot.title = element_text(hjust = 0.5)) + labs(color = "Cluster")
+
+map3
 
 
-#creates histogram of Austin Parks
-ggplot(austin_parks, aes(x = Acres.of.Land)) + 
-  geom_histogram(color="darkblue", fill="lightblue", binwidth = 50) +
-  geom_vline(aes(xintercept=mean(Acres.of.Land)),
-             color="red", linetype="dashed", size=1) + 
-  ggtitle("Austin Parks") + theme(plot.title = element_text(hjust = 0.5))
+clust_totals = summarize(group_by(parks_and_income, clusters), total_parks = n(), Total.Acres = sum(acres)) %>%
+  mutate(Share.of.Parks = total_parks/sum(total_parks)) %>%
+  mutate(Average.Acres = Total.Acres/total_parks)
+
+clust_totals = rename(clust_totals, Cluster = clusters)
+clust_totals = rename(clust_totals, No.of.Parks = total_parks)
+
+#reorders columns
+column_order <- c("Cluster", "No.of.Parks", "Share.of.Parks", "Total.Acres", "Average.Acres")
+clust_totals = clust_totals[,column_order]
 
 
-#creates a histogram of NYC Parks
-ggplot(nyc_parks, aes(x = ACRES)) + 
-  geom_histogram(color="darkblue", fill="lightblue", binwidth = 50) +
-  geom_vline(aes(xintercept=mean(ACRES)),
-             color="red", linetype="dashed", size=1) + 
-  ggtitle("NYC Parks") + theme(plot.title = element_text(hjust = 0.5))
+kable(clust_totals, caption = "Results", digits = 2)
+
+################################################################################
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#############DONTNEED################
+#creates an interactive google map
+austin_parks %>%
+  leaflet() %>%
+  addTiles() %>%
+  addMarkers()
+###################################

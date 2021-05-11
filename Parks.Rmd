@@ -1,0 +1,338 @@
+---
+title: "Wide Open Spaces"
+output: pdf_document
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+
+
+```{r , echo=FALSE, include = FALSE}
+library(ggplot2)
+library(tidyverse)
+library(ggmap)
+library(leaflet)
+library(zipcodeR)
+library(tidycensus)
+library(foreach)
+library(stringr)
+library(dplyr)
+library(NbClust)
+library(cluster)
+library(kableExtra)
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+#Google API key
+ggmap::register_google(key = "AIzaSyDjpa_BSzUs11JA1rBa2YFZs3YMrfPiu-A")
+
+#imports data for Austin parks and median income per zipcode
+austin_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/City_of_Austin_Parks_data.csv')
+travis_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/Travis_Parks.csv')
+more_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/more_parks.csv')
+austin_medianincome = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/Austin_median_income.csv')
+```
+
+
+abstract: "Parks, pools, and golf courses."
+
+# II. Introduction
+For more than a year, Covid-19 has created a environment in which many around the world remained in isolation from one another. In an effort to find respite, many have ventured to outdoor spaces, but for others, these spaces may be less easily experienced. The objective of this paper is to determine whether Austinites have equal opportunity to access outdoor spaces. To accomplish this objective, I used data derived from the parks departments for the City of Austin and Travis County. Moreover, the Austin Business Journal provided 2018 data specific to each zip code of relevant characteristics, such as educational attainment, median household income, and median home value.
+
+# III. Methods
+Since individuals seek relaxation a wide variety of ways, I applied a wide definition in determining an outdoor space. Within Austin, these not only include local and state parks, but also include public pools and private golf courses - totaling 335 outdoor spaces. Of these locations, 319 were obtained through the parks departments for the City of Austin and Travis County. However, the remaining 16 locations were derived individually from Google Maps and corresponding parks departments of Bee Cave and Wells Branch. Although, Bee Cave and Wells Branch are not technically within the city limits of Austin, their respective zip codes are categorized as city of Austin zip codes, thus both Bee Cave and Wells Branch were included in the data set.
+
+The city of Austin zip codes became a useful tool in the methodology applied to the model. This information was derived from the Austin Business Journal, which provided data of relevant characteristics, such as educational attainment, median household income, and median home value. In addition to using several of these features and data of outdoor spaces, I created an interactive variable between post-secondary educational attainment as a percentage of zip code population and median household income, mapping the outcome on Google Maps so as to discover any patterns.
+
+To best solve the objective of this paper, I determined hierarchical clustering was the best approach. First, I created a large data set of numerical vectors, in which I then centered and scaled before using the euclidean method to find the distances between each point. Next, I determined the Ward method was appropriate in use of hierarchical clustering as it produced a well-balanced cluster denodrogram. Lastly, I used k-means and the elbow method to find the optimal k to cut the tree, and discerned k = 2 would be optimal. 
+
+
+
+```{r, echo=FALSE}
+#removes unnecessary columns
+austin_parks = select(austin_parks, -(1:2), -(4:29), -(31:45), -(47:49), -(51:55))
+travis_parks = select(travis_parks, -1, -3, -(6:20))
+more_parks = select(more_parks, -(4:5))
+austin_medianincome = select(austin_medianincome,-(4:5))
+```
+
+
+
+```{r, echo=FALSE}
+#renames column
+austin_medianincome = rename(austin_medianincome, zipcode = ZIP.Code)
+austin_medianincome = rename(austin_medianincome, Population = Population..2018.Est..1)
+
+#converts variables to numeric
+austin_medianincome$Median.Household.Income <- as.numeric(gsub('[$,]', '', austin_medianincome$Median.Household.Income))
+austin_medianincome$Population <- as.numeric(gsub(',', '', austin_medianincome$Population))
+austin_medianincome$No..Of.Households..2018.Est.<- as.numeric(gsub(',', '', austin_medianincome$No..Of.Households..2018.Est.))
+austin_medianincome$Per.Capita.Income..2018.Est. <- as.numeric(gsub('[$,]', '', austin_medianincome$Per.Capita.Income..2018.Est.))
+austin_medianincome$Median.Value.Of.Owner.Occupied.Homes..2018.Est. <- as.numeric(gsub('[$,]', '', austin_medianincome$Median.Value.Of.Owner.Occupied.Homes..2018.Est.))
+austin_medianincome$No..Of.Households.With.Income..200K...2108.Est. <- as.numeric(gsub(',', '', austin_medianincome$No..Of.Households.With.Income..200K...2108.Est.))
+austin_medianincome$No..With.Master.s.Degrees <- as.numeric(gsub(',', '', austin_medianincome$No..With.Master.s.Degrees))
+austin_medianincome$No..With.Bachelor.s.Degree <- as.numeric(gsub(',', '', austin_medianincome$No..With.Bachelor.s.Degree))
+
+
+#filters zip codes only in austin
+austin_medianincome = austin_medianincome %>%
+  filter(Zip.Code.City. == 'Austin')
+
+#removes column no longer necessary
+austin_medianincome = select(austin_medianincome,-3)
+```
+
+
+
+```{r, echo=FALSE, include=FALSE}
+########CLEANS TRAVIS COUNTY PARK DATA
+#finds longitude and latitude
+travis_parks = travis_parks %>%
+  mutate(geocode(FIRST_Address)) 
+
+#finds associated addresses of longitude and latitude
+address <- do.call(rbind,
+                   lapply(1:nrow(travis_parks),
+                          function(i)revgeocode(as.numeric(travis_parks[i,4:5]))))
+
+#combines address vector with austin_parks
+travis_parks <- cbind(travis_parks,address)
+
+#extracts zipcode from address vector
+travis_parks$zipcode <- substr(str_extract(travis_parks$address," [0-9]{5}, .+"),2,6)
+
+#removes newly created address column 
+travis_parks = travis_parks[,-6]
+
+#renames columns in travis parks
+travis_parks = rename(travis_parks, address = FIRST_Address)
+travis_parks = rename(travis_parks, acres = SUM_Park_Acres)
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+##########################CLEANS AUSTIN PARKS DATA##############################
+#finds longitude and latitude associated with each park
+austin_parks = austin_parks %>%
+  mutate(geocode(ADDRESS)) 
+
+#renames columns in Austin parks
+austin_parks = rename(austin_parks, address = ADDRESS)
+austin_parks = rename(austin_parks, zipcode = ZIPCODE)
+austin_parks = rename(austin_parks, acres = ASSET_SIZE)
+austin_parks = rename(austin_parks, Name = LOCATION_NAME)
+
+#removes non-Austin zip codes
+austin_parks = austin_parks %>%
+  filter(zipcode >= 78701)
+
+#removes non-Austin zipcodes
+travis_parks = travis_parks %>%
+  filter(zipcode >= 78701)
+
+#combines both data sets of austin and travis county parks in austin
+all_austin_parks = rbind(austin_parks, travis_parks)
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+##########################CLEANS MORE_PARKS DATA################################
+#finds longitude and latitude for every address
+more_parks = more_parks %>%
+  mutate(geocode(Address))
+
+#finds associated addresses of longitude and latitude
+address <- do.call(rbind,
+                   lapply(1:nrow(more_parks),
+                          function(i)revgeocode(as.numeric(more_parks[i,4:5]))))
+
+#combines address vector with austin_parks
+more_parks <- cbind(more_parks,address)
+
+#extracts zipcode from address vector
+more_parks$zipcode <- substr(str_extract(more_parks$address," [0-9]{5}, .+"),2,6)
+
+#removes newly created address column 
+more_parks = more_parks[,-2]
+
+#renames columns in parks
+more_parks = rename(more_parks, acres = Acres.of.Land)
+more_parks = rename(more_parks, Name = Park.Name)
+
+#combines all park data
+all_austin_parks = rbind(all_austin_parks, more_parks)
+
+#reorders columns
+column_order <- c("Name", "address", "zipcode", "acres", "lon", "lat")
+all_austin_parks = all_austin_parks[,column_order]
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+#finds park percentages
+zip_totals = summarize(group_by(all_austin_parks, zipcode), total = n(), acres = sum(acres)) %>%
+  mutate(share_of_parks = total/sum(total)) %>%
+  mutate(avg_acre_in_zip = acres/total)
+
+#adds row for zipcode 78742, which had zero parks
+zip_totals = zip_totals %>% 
+  add_row(zipcode = '78742', total = 0, acres = 0,share_of_parks = 0, avg_acre_in_zip = 0)
+
+#merges data sets 
+merged_data = merge(zip_totals, austin_medianincome)
+
+#parks per capita per 100000
+merged_data = merged_data %>%
+  mutate(parks_per100000 = total/Population *100000)
+```
+
+
+# IV. Results
+```{r, echo=FALSE}
+#acerage per 100000
+ggplot(data = merged_data, mapping = aes(x = zipcode, y = parks_per100000))+ 
+  geom_col(mapping = aes(x = reorder(zipcode, parks_per100000), y = parks_per100000), fill = 'darkgreen') + 
+  coord_flip() + scale_y_continuous(name = "Acreage Per 100000") +
+  scale_x_discrete(name = "Zipcode") + ggtitle("Figure 1") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+Figure 1 displays the park distribution in Austin measured in acreage per 100000 people. Zip code 78701 has the highest acreage per 100000 of 159.12. Alternatively, zip code 78742 the lowest acreage per 100000 of 0. 
+
+```{r, echo=FALSE}
+##################HIERARCHICAL CLUSTERING OF MERGED DATA########################
+#merges data sets for parks and median income
+parks_and_income = merge(all_austin_parks, austin_medianincome)
+
+#removes address column
+parks_and_income = select(parks_and_income, -3)
+
+#sums quanities of masters and bachelors degree holders
+parks_and_income$education <-rowSums(cbind(parks_and_income$No..With.Master.s.Degrees, parks_and_income$No..With.Bachelor.s.Degree))
+
+#creates new variable of percent of post-secondary education per zip code
+parks_and_income= parks_and_income %>%
+  mutate(percent_of_education = education/Population)
+
+#creates new interactive variable between income and education
+parks_and_income= parks_and_income %>%
+  mutate(educ_income = percent_of_education*Median.Household.Income)
+```
+
+```{r, echo=FALSE}
+X_parks = parks_and_income[,3:15]
+X_parks = scale(X_parks, center=TRUE, scale = TRUE)
+distances = dist(X_parks, method = "euclidean")
+```
+
+```{r, echo=FALSE}
+#hierarchical clustering 
+cluster_parks = hclust(distances, method = 'ward.D2')
+
+#creates k grid
+k_grid = seq(2, 30, by=1)
+SSE_grid = foreach(k = k_grid, .combine = 'c') %do% {
+  cluster_k = kmeans(X_parks, k, nstart = 50)
+  cluster_k$tot.withinss
+}
+```
+
+
+```{r, echo=FALSE, include=FALSE, warning=FALSE}
+#map of percent of education
+p <- ggmap(get_googlemap(center = c(lon =  -97.733330, lat = 30.266666),
+                         zoom = 11, scale = 2,
+                         maptype ='terrain',
+                         color = 'color'))
+map1 = p + geom_point(aes(x = lon, y = lat, color = educ_income), 
+                         data = parks_and_income, size = 3)+ xlab("Longitude") + ylab("Latitude") + ggtitle("Figure 2") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+```{r, echo=FALSE}
+map1
+```
+Figure 2 displays a map of Austin and the location of each recorded outdoor space. Moreover, each point displays the result of the interaction variable between post-secondary education as a percentage of population within each zip code and median household income. 
+
+```{r, echo=FALSE}
+plot(cluster_parks, labels = FALSE, hang = -1)
+```
+Using the Ward method to implement hierarchical clustering, each location of an outdoor space is clustered in a well-balanced denodrogram.
+
+```{r, echo=FALSE}
+#SSE plot
+plot(SSE_grid)
+```
+
+Using k-means and the elbow method, k = 2 along the curve is observed to be optimal.
+
+
+```{r, echo=FALSE}
+#cut tree for clusters
+clusters <- cutree(cluster_parks, k = 2)
+
+#takes cluster vector and combines with parks_and_income
+parks_and_income = cbind(parks_and_income, clusters)
+
+#creates map of clusters
+map2 = p + geom_point(aes(x = lon, y = lat, color = factor(clusters)), 
+                         data = parks_and_income, size = 3)+ xlab("Longitude") + ylab("Latitude") + ggtitle("Figure 3") +
+  theme(plot.title = element_text(hjust = 0.5)) + labs(color = "Cluster")
+```
+
+```{r, echo=FALSE}
+map2
+```
+
+Figure 3 displays a distinguishable pattern of the location of each outdoor space in terms of respective cluster.
+
+```{r, echo=FALSE}
+#finds cluster in each park
+clust_pop = summarize(group_by(parks_and_income, zipcode), total_parks = n(),
+                      Population = sum(Population), clusters = sum(clusters)) %>%
+  mutate(Population = Population/total_parks) %>%
+  mutate(clusters = clusters/total_parks, clusters = round(clusters, digits = 0))
+
+#sums population in each cluster
+clust_pop = summarize(group_by(clust_pop, clusters), Population = sum(Population))
+
+#removes cluster column
+clust_pop = select(clust_pop, -1)
+
+#groups clusters and sums parks and acres
+clust_totals = summarize(group_by(parks_and_income, clusters), total_parks = n(), Total.Acres = sum(acres)) %>%
+  mutate(Share.of.Parks = total_parks/sum(total_parks)) %>%
+  mutate(Average.Acres = Total.Acres/total_parks) 
+
+#combines clust_totals and population totals found in clust_pop
+clust_totals = cbind(clust_totals, clust_pop)
+
+#calculates acres per 100000
+clust_totals = clust_totals%>%
+  mutate(Acres.Per.100000 = Total.Acres/Population*100000)
+
+#renames columns
+clust_totals = rename(clust_totals, Cluster = clusters)
+clust_totals = rename(clust_totals, No.of.Parks = total_parks)
+
+#reorders columns
+column_order <- c("Cluster", "Population", "No.of.Parks", "Share.of.Parks", "Total.Acres", "Average.Acres", "Acres.Per.100000")
+clust_totals = clust_totals[,column_order]
+```
+
+```{r, echo=FALSE}
+#creates table
+table1 = knitr::kable(clust_totals, caption = "Results", digits = 2)
+```
+
+```{r, echo=FALSE}
+table1
+```
+
+# V. Conclusion
+
+
