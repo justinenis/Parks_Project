@@ -198,7 +198,7 @@ ggplot(data = merged_data, mapping = aes(x = zipcode, y = parks_per100000))+
   geom_col(mapping = aes(x = reorder(zipcode, parks_per100000), y = parks_per100000), fill = 'darkgreen') + 
   coord_flip() + scale_y_continuous(name = "Acreage Per 100000") +
   scale_x_discrete(name = "Zipcode") + ggtitle("Figure 1") +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5)) 
 
 ```
 Figure 1 displays the distribution outdoor spaces in Austin measured in acreage per 100000. Zip code 78701 has the highest acreage per 100000 of 159.12 acres. Alternatively, zip code 78742 the lowest acreage per 100000 of 0 acres. 
@@ -251,14 +251,14 @@ p <- ggmap(get_googlemap(center = c(lon =  -97.733330, lat = 30.266666),
                          color = 'color'))
 map1 = p + geom_point(aes(x = lon, y = lat, color = educ_income), 
                          data = parks_and_income, size = 3)+ xlab("Longitude") + ylab("Latitude") + ggtitle("Figure 2") +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5))+ labs(color = "Median Household Income")
 ```
 
 
 ```{r, echo=FALSE}
 map1
 ```
-Figure 2 displays a map of Austin and the location of each recorded outdoor space. Moreover, each point displays the result of the interaction variable between post-secondary education as a percentage of population within each zip code and median household income. 
+Figure 2 displays a map of Austin and the location of each recorded outdoor space. Moreover, each point displays the result of the interaction variable between post-secondary education as a percentage of population and median household income within each zip code. 
 
 ```{r, echo=FALSE}
 plot(cluster_parks, labels = FALSE, hang = -1)
