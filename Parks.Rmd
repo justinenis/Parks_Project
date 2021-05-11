@@ -221,10 +221,11 @@ parks_and_income= parks_and_income %>%
 #creates new interactive variable between income and education
 parks_and_income= parks_and_income %>%
   mutate(educ_income = percent_of_education*Median.Household.Income)
+
 ```
 
 ```{r, echo=FALSE}
-X_parks = parks_and_income[,3:15]
+X_parks = parks_and_income[,3:16]
 X_parks = scale(X_parks, center=TRUE, scale = TRUE)
 distances = dist(X_parks, method = "euclidean")
 ```
