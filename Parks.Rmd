@@ -36,16 +36,16 @@ more_parks = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/more_
 austin_medianincome = read.csv('/Users/franklinstudent/Desktop/GitHub/Parks_Project/Austin_median_income.csv')
 ```
 
-
-abstract: "Parks, pools, and golf courses."
+# I. Abstract
+"Parks, pools, and golf courses."
 
 # II. Introduction
 For more than a year, Covid-19 has created a environment in which many around the world remained in isolation from one another. In an effort to find respite, many have ventured to outdoor spaces, but for others, these spaces may be less easily experienced. The objective of this paper is to determine whether Austinites have equal opportunity to access outdoor spaces. To accomplish this objective, I used data derived from the parks departments for the City of Austin and Travis County. Moreover, the Austin Business Journal provided 2018 data specific to each zip code of relevant characteristics, such as educational attainment, median household income, and median home value.
 
 # III. Methods
-Since individuals seek relaxation a wide variety of ways, I applied a wide definition in determining an outdoor space. Within Austin, these not only include local and state parks, but also include public pools and private golf courses - totaling 335 outdoor spaces. Of these locations, 319 were obtained through the parks departments for the City of Austin and Travis County. However, the remaining 16 locations were derived individually from Google Maps and corresponding parks departments of Bee Cave and Wells Branch. Although, Bee Cave and Wells Branch are not technically within the city limits of Austin, their respective zip codes are categorized as city of Austin zip codes, thus both Bee Cave and Wells Branch were included in the data set.
+Since individuals seek relaxation in a wide variety of ways, I applied a wide definition in determining an outdoor space. Within Austin, these not only include local and state parks, but also include public pools and private golf courses - totaling 335 outdoor spaces. Of these locations, 319 were obtained through the parks departments for the City of Austin and Travis County. However, the remaining 16 locations were derived individually from Google Maps and corresponding parks departments of Bee Cave and Wells Branch. Although, Bee Cave and Wells Branch are not technically within the city limits of Austin, their respective zip codes are categorized as city of Austin zip codes, thus both Bee Cave and Wells Branch were included in the data set.
 
-The city of Austin zip codes became a useful tool in the methodology applied to the model. This information was derived from the Austin Business Journal, which provided data of relevant characteristics, such as educational attainment, median household income, and median home value. In addition to using several of these features and data of outdoor spaces, I created an interactive variable between post-secondary educational attainment as a percentage of zip code population and median household income, mapping the outcome on Google Maps so as to discover any patterns.
+The 43 zip codes for the City of Austin became a useful tool in the methodology applied to the model. This information was derived from the Austin Business Journal, which provided data of relevant characteristics, such as educational attainment, median household income, and median home value. In addition to using several of these features and data of outdoor spaces, I created an interactive variable between post-secondary educational attainment as a percentage of zip code population and median household income, mapping the outcome on Google Maps so as to discover any patterns.
 
 To best solve the objective of this paper, I determined hierarchical clustering was the best approach. First, I created a large data set of numerical vectors, in which I then centered and scaled before using the euclidean method to find the distances between each point. Next, I determined the Ward method was appropriate in use of hierarchical clustering as it produced a well-balanced cluster denodrogram. Lastly, I used k-means and the elbow method to find the optimal k to cut the tree, and discerned k = 2 would be optimal. 
 
@@ -200,7 +200,7 @@ ggplot(data = merged_data, mapping = aes(x = zipcode, y = parks_per100000))+
   theme(plot.title = element_text(hjust = 0.5))
 
 ```
-Figure 1 displays the park distribution in Austin measured in acreage per 100000 people. Zip code 78701 has the highest acreage per 100000 of 159.12. Alternatively, zip code 78742 the lowest acreage per 100000 of 0. 
+Figure 1 displays the park distribution in Austin measured in acreage per 100000. Zip code 78701 has the highest acreage per 100000 of 159.12 acres. Alternatively, zip code 78742 the lowest acreage per 100000 of 0 acres. 
 
 ```{r, echo=FALSE}
 ##################HIERARCHICAL CLUSTERING OF MERGED DATA########################
@@ -288,7 +288,7 @@ map2 = p + geom_point(aes(x = lon, y = lat, color = factor(clusters)),
 map2
 ```
 
-Figure 3 displays a distinguishable pattern of the location of each outdoor space in terms of respective cluster.
+Figure 3 displays a distinguishable pattern of each location of outdoor space in terms of its respective cluster.
 
 ```{r, echo=FALSE}
 #finds cluster in each park
@@ -324,15 +324,19 @@ column_order <- c("Cluster", "Population", "No.of.Parks", "Share.of.Parks", "Tot
 clust_totals = clust_totals[,column_order]
 ```
 
-```{r, echo=FALSE}
-#creates table
-table1 = knitr::kable(clust_totals, caption = "Results", digits = 2)
-```
-
-```{r, echo=FALSE}
-table1
-```
 
 # V. Conclusion
+Outdoor spaces are an important venue for many seeking relaxation, particularly during this time of Covid-19. Austinites have a wide variety of 335 parks spread across 43 zip codes in which to enjoy recreational activity, but equal opportunity to access outdoor spaces may be questionable. Figure 1 displays the distribution of outdoor spaces in terms of acreage per 100000. It becomes obvious upon observation that equal access to outdoor spaces are heavily reliant on the zip code in which you choose to live. By a large difference, zip code 78701 has the highest acreage per 100000 of 159.12 acres. Zip code 78702, the next highest acreage per 100000, had 102.62 acres. Alternatively, zipcode 78742 had the lowest acreage per 100000 of 0 acres. 
+
+When plotting each location and using the interaction between post-secondary education as a percentage of population per zip code and median household income per zip code, there appears to be a slight pattern between East and West Austin, loosely following I-35. Hierarchical clustering was used to assist in better understanding the proposed pattern. Once choosing an optimal k clusters of 2, plotting the results became more distinguishable, as noted in Table 1. 
+
+Table 1 displays each clusters respective population, number of parks, percentage share of parks, total acres, average acre, and acres per 100000. Cluster 1 not only has a smaller total number and share of parks, but also a smaller population. However, cluster 1 has a larger amount of total acres, average acres, and acres per 100000. Relative to cluster 2, cluster 1 has 22.1% smaller population, but 30.5% more total acres, 39.4% higher average acre, and 67.5% more acres per 100000. 
+
+
+
+
+
+
+
 
 
