@@ -169,7 +169,7 @@ ggplot(data = merged_data, mapping = aes(x = zipcode, y = parks_per100000))+
   geom_col(mapping = aes(x = reorder(zipcode, parks_per100000), y = parks_per100000), fill = 'darkgreen') + 
   coord_flip() + scale_y_continuous(name = "Acreage Per 100000") +
   scale_x_discrete(name = "Zipcode") + ggtitle("Park Distribution in Austin") +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5)) + geom_text(aes(label=parks_per100000))
 
 
 
@@ -198,7 +198,7 @@ p <- ggmap(get_googlemap(center = c(lon =  -97.733330, lat = 30.266666),
                          color = 'color'))
 map1 = p + geom_point(aes(x = lon, y = lat, color = educ_income),
                       data = parks_and_income, size= 3)+ xlab("Longitude") + ylab("Latitude") + ggtitle("Figure 1") +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5)) + labs(color = "Median Household Income") 
 
 map1
 
