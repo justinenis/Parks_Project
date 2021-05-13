@@ -154,7 +154,9 @@ merged_data = merge(zip_totals, austin_medianincome)
 
 #parks per capita per 100000
 merged_data = merged_data %>%
-  mutate(parks_per100000 = total/Population *100000)
+  mutate(parks_per100000 = total/Population *100000, parks_per100000 = round(parks_per100000, digits = 0))
+
+
 
 
 #barplot park totals
@@ -169,11 +171,7 @@ ggplot(data = merged_data, mapping = aes(x = zipcode, y = parks_per100000))+
   geom_col(mapping = aes(x = reorder(zipcode, parks_per100000), y = parks_per100000), fill = 'darkgreen') + 
   coord_flip() + scale_y_continuous(name = "Acreage Per 100000") +
   scale_x_discrete(name = "Zipcode") + ggtitle("Park Distribution in Austin") +
-  theme(plot.title = element_text(hjust = 0.5)) + geom_text(aes(label=parks_per100000))
-
-
-
-
+  theme(plot.title = element_text(hjust = 0.5)) 
 
 
 #merges data sets for parks and median income
